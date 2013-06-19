@@ -1,0 +1,12 @@
+{application, protocol,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { protocol_app, []}},
+  {env, []}
+ ]}.

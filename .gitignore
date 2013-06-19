@@ -4,6 +4,7 @@
 web/ebin
 web/deps
 router/ebin
+protocol/ebin
 
 distributed_router/erl_crash.dump
 

@@ -71,7 +71,7 @@ $(function(){
     function longPoll() {
         $.ajax({
             type: "POST",
-            url: "http://demo:8080/longpoll/1?" + new Date(),
+            url: "http://ecomet.etao.com:8080/longpoll/1?" + new Date(),
             data: {uid:uid},
             dataType: "json",
             success: function(ret){ 
