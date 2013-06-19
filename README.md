@@ -7,11 +7,10 @@ with an pub/sub model  and  offline message implemention
 
 TODO
 
-1. fix types Appid  :integer()  Uid: integer()  Msg: json()
-2. distribution router
-3. performance test
-4. fix lager config
-5. change some Function support cast call 
+1. distribution router
+2. performance test
+3. fix lager config
+4. change some Function support cast call 
 
 webtools start
 
@@ -26,35 +25,38 @@ getting start
          
          git clone https://github.com/zhangjiayin/ecomet.git
 
-2. make and start router
+2. make  and compile
 
-         cd ecomet/router
-         make
-         ./rebar generate
-         cd rel/ecomet_router/
-         ./bin/ecomet_router start
+        make 
+        ./rebar generate 
 
-3. make and start web
+3. start router
 
-         cd ../../../web
-         make
-         ./rebar generate
-         cd rel/ecomet_web/
-         ./bin/ecomet_web start
-         
-4. make and start thrift server
-         
-         cd ../../../thrift_server/
-         make
-         ./rebar generate  
-         cd rel/ecomet_thrift_server/
-         ./bin/ecomet_thrift_server start
+        cd target
+        cd ecomet_router
+        ./bin/ecomet_router start
+        cd ../../
 
-5. edit nginx conf include nginx config (demo.conf), and setup demo env
+4. start web
 
-         cd ../../../demo/conf/
+        cd target
+        cd ecomet
+        ./bin/ecomet start
+        cd ../../
+
+5. start thrift server
+
+        cd target
+        cd ecomet_thrift_server
+        ./bin/ecomet_thrift_server start
+        cd ../../
+
+6. edit nginx conf include nginx config (demo.conf), and setup demo env
+
+         cd demo/conf/
          #edit demo.conf change the root and fix fastcgi params
          #ensure  the php have pdo and sqlite driver
          #and then edit hosts file to  use hostname  demo to your test ip
+        cd ../../
 
-6. enjoy it
+7. enjoy it
