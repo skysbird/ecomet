@@ -16,6 +16,7 @@ start() ->
     {ok,DocRoot} = application:get_env(docroot),
     {ok,ClusterNodes} = application:get_env(connect_nodes),
     {ok,Options} = application:get_env(server_config),
+    hello_protocol:start_link(),    
     lists:foreach(fun(X)->net_adm:ping(X) end, ClusterNodes),
     pg2:start_link(),
     process_flag(trap_exit,true),
@@ -59,6 +60,12 @@ loop(Req, DocRoot,Keepalive) ->
                     "heathy/"           ->
                         Json=mochijson2:encode(heathy()),
                         okJson(Req, Json);
+                    "echo/"           ->
+                        %just for a test protocol implement
+                        Qs = Req:parse_qs(),
+                        Content = proplists:get_value("content",Qs,""),
+                        Content1 = hello_protocol:process(Content),
+                        ok(Req,Content1);
                     _ ->
                         error_logger:info_msg("DocRoot ~p\n", [DocRoot]),
                         Req:serve_file(Path, DocRoot)
