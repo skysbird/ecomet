@@ -83,15 +83,10 @@ loop(Req, DocRoot,Keepalive) ->
                     "send/" ++ Id           ->
                         %just for a test protocol implement
                         Qs = Req:parse_qs(),
-                        Content = proplists:get_value("content",Qs,""),
-                        Content1 = hello_protocol:process(Content),
-                        Content2 = #message{appId = 1,
-                                            from = 1,
-                                            to = 1,
-                                            nick = "xx",
-                                            content = Content1
-                                           },
-                        rpc:call(node(pg2:get_closest_pid(erouter)),ecomet_router, send,[1,list_to_integer(Id),Content2]);
+                        Reply = hello_protocol:process(message,Qs),
+                        rpc:call(node(pg2:get_closest_pid(erouter)),ecomet_router, send,[1,list_to_integer(Id),Reply]),
+                        Json=mochijson2:encode({struct, [{result,0}]}),
+                        okJson(Req,Json);
                     _ ->
                         error_logger:info_msg("DocRoot ~p\n", [DocRoot]),
                         Req:serve_file(Path, DocRoot)

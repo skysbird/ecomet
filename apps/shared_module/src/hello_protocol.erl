@@ -3,7 +3,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0,process/1]).
+-export([start_link/0,process/2]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -14,6 +14,7 @@
          code_change/3]).
 
 -record(state, {}).
+-include("../../shared_module/src/ecomet_router_types.hrl").
 
 %%%===================================================================
 %%% API
@@ -30,8 +31,9 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 
-process(Data)->
-        gen_server:call(?MODULE,{process,Data}).
+process(Type,Data)->
+        gen_server:call(?MODULE,{Type,Data}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -65,11 +67,22 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 
-handle_call({process,Data}, _From, State) ->
+handle_call({message,Qs}, _From, State) ->
     %just echo back
-    Reply = Data,
+    Content = proplists:get_value("content",Qs,""),
+    AppId = proplists:get_value("appid",Qs,""),
+    From = proplists:get_value("from",Qs,""),
+    To = proplists:get_value("to",Qs,""),
+    Nick = proplists:get_value("nick",Qs,""),
+    
+    Reply = #message{appId = list_to_binary(AppId),
+                        from = list_to_binary(From),
+                        to = list_to_binary(To),
+                        nick = list_to_binary(Nick),
+                        content = list_to_binary(Content)
+                        },
+                        
     {reply, Reply, State};
-
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
