@@ -74,11 +74,14 @@ handle_call({message,Qs}, _From, State) ->
     From = proplists:get_value("from",Qs,""),
     To = proplists:get_value("to",Qs,""),
     Nick = proplists:get_value("nick",Qs,""),
+    Type = proplists:get_value("type",Qs,"msg"),
+    
     
     Reply = #message{appId = list_to_binary(AppId),
                         from = list_to_binary(From),
                         to = list_to_binary(To),
                         nick = list_to_binary(Nick),
+                        type = list_to_binary(Type),
                         content = list_to_binary(Content)
                         },
                         
