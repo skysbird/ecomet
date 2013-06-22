@@ -3,7 +3,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0,process/2]).
+-export([start_link/0,process/2,check_sign/4]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -67,25 +67,38 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 
+check_sign(AppId,Uid,Timestamp,Sign)->
+    Secret = "123456",
+    Plain = AppId++Uid++Timestamp++Secret,
+    
+    Md5Str = crypto_util:md5(Plain),  
+    error_logger:info_msg("md5sum ~p ~p ~n",[Plain,Md5Str]),
+    Sign1 = list_to_binary(Sign),
+    if Md5Str == Sign1  ->
+        ok;
+       true->
+        error
+    end.
+   
 handle_call({message,Qs}, _From, State) ->
-    %just echo back
     Content = proplists:get_value("content",Qs,""),
     AppId = proplists:get_value("appid",Qs,""),
     From = proplists:get_value("from",Qs,""),
     To = proplists:get_value("to",Qs,""),
     Nick = proplists:get_value("nick",Qs,""),
     Type = proplists:get_value("type",Qs,"msg"),
-    
-    
+   
+
     Reply = #message{appId = list_to_binary(AppId),
-                        from = list_to_binary(From),
-                        to = list_to_binary(To),
-                        nick = list_to_binary(Nick),
-                        type = list_to_binary(Type),
-                        content = list_to_binary(Content)
-                        },
-                        
-    {reply, Reply, State};
+                           from = list_to_binary(From),
+                           to = list_to_binary(To),
+                           nick = list_to_binary(Nick),
+                           type = list_to_binary(Type),
+                           content = list_to_binary(Content)
+                           },
+   error_logger:info_msg("~p",[Reply]),
+   { reply, {ok,Reply}, State};
+    
 
 handle_call(_Request, _From, State) ->
     Reply = ok,

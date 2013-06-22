@@ -64,13 +64,24 @@ loop(Req, DocRoot,Keepalive) ->
                         erlang:send_after(?WAITTIME, self(), "ping"),
                         rpc:call(node(pg2:get_closest_pid(erouter)),ecomet_router, login,[1,1, Id,self(),true]),
                         proc_lib:hibernate(?MODULE, feed, [Response, Id, 1]);
-                    "longpoll/" ++ Id     ->
+                    "longpoll/" ++ Appid     ->
 
-                        rpc:call(node(pg2:get_closest_pid(erouter)),ecomet_router, login,[1,1,list_to_integer(Id),self(),true]),
-                        TimerRef = erlang:start_timer(?WAITTIME,self(), "ping"),
-                        Reentry = mochiweb_http:reentry({?MODULE, loop,[DocRoot,keepalive]}),
+                        Args = Req:parse_qs(),
+                        Timestamp = proplists:get_value("timestamp", Args, ""),
+                        Id  = proplists:get_value("uid", Args, ""),
+                        Sign  = proplists:get_value("sign", Args, ""),
+                        %check the request validation
+                        case hello_protocol:check_sign(Appid,Id,Timestamp,Sign) of
+                            ok  ->
+                                rpc:call(node(pg2:get_closest_pid(erouter)),ecomet_router, login,[list_to_integer(Appid),1,list_to_integer(Id),self(),true]),
+                                TimerRef = erlang:start_timer(?WAITTIME,self(), "ping"),
+                                Reentry = mochiweb_http:reentry({?MODULE, loop,[DocRoot,keepalive]}),
 
-                        proc_lib:hibernate(?MODULE, resume, [Req,Id, Reentry, TimerRef]);
+                                proc_lib:hibernate(?MODULE, resume, [Req,Id, Reentry, TimerRef]);
+                            error   ->
+                                Json=mochijson2:encode({struct, [{result,-1},{msg,<<"invalid signature">>}]}),
+                                okJson(Req,Json)
+                        end;
                     "heathy/"           ->
                         Json=mochijson2:encode(heathy()),
                         okJson(Req, Json);
@@ -80,13 +91,20 @@ loop(Req, DocRoot,Keepalive) ->
                         Content = proplists:get_value("content",Qs,""),
                         Content1 = hello_protocol:process(Content),
                         ok(Req,Content1);
-                    "send/" ++ Id           ->
+                    "send/" ++ Appid           ->
                         %just for a test protocol implement
                         Qs = Req:parse_qs(),
-                        Reply = hello_protocol:process(message,Qs),
-                        rpc:call(node(pg2:get_closest_pid(erouter)),ecomet_router, send,[1,list_to_integer(Id),Reply]),
-                        Json=mochijson2:encode({struct, [{result,0}]}),
-                        okJson(Req,Json);
+                        Id = proplists:get_value("uid",Qs,""),
+                        %another check request validation, maybe just check the source ip?
+                        case hello_protocol:process(message,Qs) of
+                            {ok,Reply}  ->
+                                rpc:call(node(pg2:get_closest_pid(erouter)),ecomet_router, send,[list_to_integer(Appid),list_to_integer(Id),Reply]),
+                                Json=mochijson2:encode({struct, [{result,0}]}),
+                                okJson(Req,Json);
+                            _ ->
+                                Json=mochijson2:encode({struct, [{result,-1},{msg,<<"">>}]}),
+                                okJson(Req,Json)
+                        end;
                     _ ->
                         error_logger:info_msg("DocRoot ~p\n", [DocRoot]),
                         Req:serve_file(Path, DocRoot)
@@ -96,11 +114,20 @@ loop(Req, DocRoot,Keepalive) ->
                     "longpoll/" ++ Appid   ->
                         Args = Req:parse_post(),
                         Id  = proplists:get_value("uid", Args, ""),
-                        rpc:call(node(pg2:get_closest_pid(erouter)),ecomet_router, login,[list_to_integer(Appid),1,list_to_integer(Id),self(),true]),
-                        TimerRef = erlang:start_timer(?WAITTIME,self(), "ping"),
-                        Reentry = mochiweb_http:reentry({?MODULE, loop,[DocRoot,keepalive]}),
+                        Timestamp = proplists:get_value("timestamp", Args, ""),
+                        Sign  = proplists:get_value("sign", Args, ""),
+                        %TODO:check the request validation
+                        case hello_protocol:check_sign(Appid,Id,Timestamp,Sign) of
+                            ok  ->
+                                rpc:call(node(pg2:get_closest_pid(erouter)),ecomet_router, login,[list_to_integer(Appid),1,list_to_integer(Id),self(),true]),
+                                TimerRef = erlang:start_timer(?WAITTIME,self(), "ping"),
+                                Reentry = mochiweb_http:reentry({?MODULE, loop,[DocRoot,keepalive]}),
 
-                        proc_lib:hibernate(?MODULE, resume, [Req,Id, Reentry, TimerRef]);
+                                proc_lib:hibernate(?MODULE, resume, [Req,Id, Reentry, TimerRef]);
+                            error   ->
+                                Json=mochijson2:encode({struct, [{result,-1},{msg,"invalid signature"}]}),
+                                okJson(Req,Json)
+                        end;
                     _ ->
                         Req:not_found()
                 end;
@@ -138,7 +165,8 @@ resume(Req, Id, Reentry,TimerRef) ->
         {router_msg, Msg} ->
             erlang:cancel_timer(TimerRef),
             error_logger:info_msg("router_msg Msg  ~p~n", [Msg]),
-            J={struct, [{appid, Msg#message.appId},{nick, Msg#message.nick},{type,Msg#message.type},{content,Msg#message.content},{from, Msg#message.from},{to, Msg#message.to}, {created,Msg#message.created}]},
+            %J={struct, [{appid, Msg#message.appId},{nick, Msg#message.nick},{type,Msg#message.type},{content,Msg#message.content},{from, Msg#message.from},{to, Msg#message.to}, {created,Msg#message.created}]},
+            J = {struct,[{result,0},{content,Msg#message.content}]},
             okJson(Req, mochijson2:encode(J));
         {'EXIT',Pid,noconnection} ->
             error_logger:info_msg("EXIT ~p~n", [Pid]),

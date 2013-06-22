@@ -1,3 +1,13 @@
+<?php
+    $secret = "123456";
+    $user_id = 1;
+    $app_id = 1;
+    $timestamp = time();
+    $plain = "$app_id$user_id$timestamp$secret";
+    echo "$plain<br/>";
+    $sign = md5($plain);
+    echo $sign;  
+?>
 <html>
 <head>
         <script src="js/jquery-2.0.2.min.js"></script>
@@ -14,6 +24,10 @@
             $.ajax({
                 type: "GET",
                 url: "http://ecomet.etao.com:8080/longpoll/1?",
+                data: {uid:"<?php echo $user_id;?>",
+                       timestamp:"<?php echo $timestamp;?>",
+                       sign:"<?php echo $sign;?>"
+                      },
                 cache:false,
                 dataType: "json",
                 success: function(ret){ 
