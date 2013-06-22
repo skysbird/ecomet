@@ -60,3 +60,9 @@ getting start
         cd ../../
 
 7. enjoy it
+
+        Open the browser to url http://demo/test.php, hold on this page, and then open another browser on url http://demo:8080/send/1?content=test_content&uid=1
+        
+        If everything is ok, you will see the test_content will on the http://demo/test.php page you have opened before.
+
+       
