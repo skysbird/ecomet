@@ -20,8 +20,8 @@ loop() ->
                     {ok,ClusterNodes} = application:get_env(connect_nodes),
                     error_logger:info_msg("cluster Nodes is  ~p ",[ClusterNodes]),
                     lists:foreach(fun(X)-> net_adm:ping(X) end, ClusterNodes);
-                Pid ->
-                    error_logger:info_msg("erouter is  ~p ",[Pid]),
+                _Pid ->
+                    %error_logger:info_msg("erouter is  ~p ",[Pid]),
                     ok
             end
     end ,

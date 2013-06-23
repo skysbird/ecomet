@@ -3,6 +3,7 @@
 exec erl -pa apps/web/ebin apps/shared_module/ebin/ edit deps/*/ebin -boot start_sasl \
     -name "n1@127.0.0.1" \
     -setcookie abc \
+    -mnesia dir '"./mnesia1"' \
     -config  ecomet.config \
     -K true \
     --hidden \

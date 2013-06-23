@@ -1,5 +1,5 @@
 <?php
-    $secret = "123456";
+    $secret = "owlbiyqf";
     $user_id = 1;
     $app_id = 1;
     $timestamp = time();

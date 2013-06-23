@@ -1,9 +1,9 @@
--module(hello_protocol).
+-module(auth_util).
 
 -behaviour(gen_server).
 
 %% API
--export([start_link/0,process/2,check_sign/4]).
+-export([start_link/0,generate_key/0,get_key/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -13,7 +13,13 @@
          terminate/2,
          code_change/3]).
 
+-define(AUTH_KEY, auth_key).
+-define(ALLOW_STR,"0123456789abcdefghijklmnopqrstuvwxyz").
+
 -record(state, {}).
+-record(auth_key,{appid::integer(),key::string()|binary()}).
+
+
 -include("../../shared_module/src/ecomet_router_types.hrl").
 
 %%%===================================================================
@@ -28,12 +34,18 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    auth_util:start_link(),
+    mnesia:start(),
+    case mnesia:create_table(?AUTH_KEY, [{disc_copies,[node()]},{type,ordered_set}]) of
+         {atomic, ok} ->
+             ok;
+         Msg  ->
+             error_logger:info_msg("table exists ok ~p",[Msg])
+    end,
+   
+     
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 
-process(Type,Data)->
-        gen_server:call(?MODULE,{Type,Data}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -53,6 +65,40 @@ process(Type,Data)->
 init([]) ->
     {ok, #state{}}.
 
+
+random_str(Len,AllowedChars)->
+    lists:foldl(fun(_, Acc) -> 
+                [lists:nth(random:uniform(length(AllowedChars)),  AllowedChars)]  ++ Acc  
+                end, [], lists:seq(1, Len)
+                ).
+  
+generate_key()->
+    %get the last record
+    F = fun() ->
+        MaxKey = case mnesia:last(?AUTH_KEY) of
+                    '$end_of_table' ->
+                                0;
+                    Msg->
+                                Msg
+                  end,
+
+        error_logger:info_msg("MaxKey is ~p ~n",[MaxKey]),
+        RandomKey = random_str(8,?ALLOW_STR),
+        AuthData  = #auth_key{appid = MaxKey+1 , key = RandomKey},
+        mnesia:write(AuthData),
+        error_logger:info_msg("~p ~n",[AuthData])
+    end,
+    mnesia:transaction(F).
+
+get_key(Appid)  ->
+     F = fun() ->
+        [R|_] = mnesia:read({auth_key,Appid}),
+        error_logger:info_msg("~p ~n",[R]),
+        R#auth_key.key
+    end,
+    {atomic,R1} = mnesia:transaction(F),
+    R1.
+   
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -67,39 +113,6 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-
-check_sign(AppId,Uid,Timestamp,Sign)->
-    Secret = auth_util:get_key(list_to_integer(AppId)),
-   
-    Plain = AppId++Uid++Timestamp++Secret,
-    
-    Md5Str = crypto_util:md5(Plain),  
-    error_logger:info_msg("md5sum ~p ~p ~n",[Plain,Md5Str]),
-    Sign1 = list_to_binary(Sign),
-    if Md5Str == Sign1  ->
-        ok;
-       true->
-        error
-    end.
-   
-handle_call({message,Qs}, _From, State) ->
-    Content = proplists:get_value("content",Qs,""),
-    AppId = proplists:get_value("appid",Qs,""),
-    From = proplists:get_value("from",Qs,""),
-    To = proplists:get_value("to",Qs,""),
-    Nick = proplists:get_value("nick",Qs,""),
-    Type = proplists:get_value("type",Qs,"msg"),
-   
-
-    Reply = #message{appId = list_to_binary(AppId),
-                           from = list_to_binary(From),
-                           to = list_to_binary(To),
-                           nick = list_to_binary(Nick),
-                           type = list_to_binary(Type),
-                           content = list_to_binary(Content)
-                           },
-   error_logger:info_msg("~p",[Reply]),
-   { reply, {ok,Reply}, State};
     
 
 handle_call(_Request, _From, State) ->
